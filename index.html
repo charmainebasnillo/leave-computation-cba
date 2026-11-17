@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SL / VL Leave Dashboard</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f4f8ff;--card:#ffffff;--tx:#0f1e3d;--mut:#5a6b8c;--bd:#d3e0f5;--navy:#1d4ed8;--yel:#e8f1ff;--yeltx:#0f2a5c;--okb:#dbeafe;--okt:#1e3a8a;--wb:#faeeda;--wt:#854f0b;--eb:#fcebeb;--et:#a32d2d;--res:#f5f9ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1630;--card:#122244;--tx:#eaf1ff;--mut:#9db3dd;--bd:#27406e;--navy:#8db4ff;--yel:#1a2f5c;--yeltx:#e8f1ff;--okb:#1a3a78;--okt:#cfe0ff;--wb:#44300f;--wt:#fac775;--eb:#4a1b1b;--et:#f7c1c1;--res:#162a52}}
+:root[data-theme="dark"]{--bg:#0b1630;--card:#122244;--tx:#eaf1ff;--mut:#9db3dd;--bd:#27406e;--navy:#8db4ff;--yel:#1a2f5c;--yeltx:#e8f1ff;--okb:#1a3a78;--okt:#cfe0ff;--wb:#44300f;--wt:#fac775;--eb:#4a1b1b;--et:#f7c1c1;--res:#162a52}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+main{max-width:960px;margin:0 auto;padding:20px 16px 40px}
+.hd{background:#1d4ed8;color:#fff;border-radius:12px;padding:16px 18px;margin-bottom:16px}.hd h1{font-size:22px;margin:0 0 2px;color:#fff}.hd p{margin:0;color:#dbe7ff;font-size:13px}.m.auto{color:var(--navy);font-weight:600}input:disabled{opacity:.75;cursor:not-allowed}
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.top label{font-weight:600;font-size:13px}
+select,input{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:7px 9px;width:100%}
+.top select{flex:1;min-width:260px;width:auto;background:var(--yel);color:var(--yeltx);font-weight:600}
+#banner{border-radius:8px;padding:11px 14px;font-weight:600;font-size:14px;margin-bottom:14px}
+.ok{background:var(--okb);color:var(--okt)}.warn{background:var(--wb);color:var(--wt)}.err{background:var(--eb);color:var(--et)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px}
+.card h2{font-size:12px;letter-spacing:.06em;margin:0 0 10px;color:var(--mut)}
+.f{margin-bottom:10px}.f label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:3px}
+.f input,.f select{background:var(--yel);color:var(--yeltx)}
+.f.bad input,.f.bad select{border:2px solid var(--et);background:var(--eb);color:var(--et)}
+.m{color:var(--et);font-size:12px;margin-top:3px}
+.r{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd);font-size:14px}
+.r span:first-child{color:var(--mut)}.r span:last-child{font-weight:600;text-align:right}
+#tot{margin-top:12px;background:var(--okb);border-radius:8px;padding:12px 14px}
+#tot small{display:block;color:var(--okt);font-size:12px;font-weight:600}#tot b{font-size:26px;color:var(--navy)}
+details{margin-top:14px}summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--mut)}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px}
+.foot{color:var(--mut);font-size:12px;margin-top:12px}
+</style></head><body><main>
+<div class="hd"><h1>SL / VL leave dashboard</h1><p>Choose what to compute, fill in one employee, read the results. Nothing is saved or sent anywhere.</p></div>
+<div class="top"><label for="mode">I want to compute</label>
+<select id="mode"><option value="1">CLEARANCE - leave hours (resigned/retired/left)</option><option value="2">AFTER 1 YEAR - leave hours (less than 1 year)</option><option value="3" selected>SLVL - cash computation</option></select></div>
+<div id="banner"></div>
+<div class="grid">
+<div class="card"><h2>ENTRIES - TYPE HERE</h2><div id="ins"></div></div>
+<div class="card"><h2>RESULTS</h2><div id="res"></div><div id="tot"></div></div>
+</div>
+<details><summary>Settings (leave year, cut-off, rates, add-ons)</summary>
+<div class="sg" id="set"></div>
+<p class="foot">Leave days by completed years: 1 year = 10, 2 = 12, 3 = 14, 4 and up = 15. Hourly rate = Daily ÷ hours per day, or Monthly × 12 ÷ working days ÷ hours per day.</p></details>
+<p class="foot">Cut-off for less than 1 year is set to Mar 31, 2027 (current leave year). Change it in Settings if needed.</p>
+</main>
+<script>
+var S={lys:'2026-04-01',cut:'2027-03-31',hpd:8,wd:313,rt:'Monthly',p1:10,p2:5};
+var SF=[['lys','Leave year start','date'],['cut','Cut-off, less than 1 year','date'],['rt','Rate typed','sel'],['hpd','Hours per day','number'],['wd','Working days per year','number'],['p1','Add-on % (SL or VL complete)','number'],['p2','Additional % (both complete)','number']];
+var v={name:'Juan Dela Cruz',hire:'2019-03-04',lwd:'2026-11-10',type:'Resigned/Retired/Left',rate:'30000',slst:'Not complete',sl:'67',vst:'Complete',vl:'75'};
+var F={name:['Employee name','text'],hire:['Hire date','date'],lwd:['Last working day','date'],type:['Employee type','sel'],rate:['Rate','number'],slst:['SL status','st'],sl:['SL unused (hours)','number'],vst:['VL status','st'],vl:['VL unused (hours)','number']};
+var SHOW={1:['name','hire','lwd'],2:['name','hire'],3:['name','rate','slst','sl','vst','vl']};
+var mode=3,$=function(i){return document.getElementById(i)};
+function pd(s){return s?new Date(s+'T00:00:00'):null}
+function yrs(a,b){var y=b.getFullYear()-a.getFullYear();if(b.getMonth()<a.getMonth()||(b.getMonth()==a.getMonth()&&b.getDate()<a.getDate()))y--;return y}
+function r2(x){return Math.round(x*100)/100}
+function n(x){return String(r2(x))}
+function php(x){return '₱'+x.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function buildSettings(){$('set').innerHTML=SF.map(function(f){
+ var c=f[2]==='sel'?'<select data-s="rt"><option>Monthly</option><option>Daily</option></select>':'<input data-s="'+f[0]+'" type="'+f[2]+'" step="any">';
+ return '<div class="f"><label>'+f[1]+'</label>'+c+'</div>'}).join('');
+ document.querySelectorAll('[data-s]').forEach(function(e){e.value=S[e.dataset.s];
+  e.oninput=e.onchange=function(){var k=e.dataset.s;S[k]=(e.type==='number')?parseFloat(e.value):e.value;calc()}})}
+function buildInputs(){
+ $('ins').innerHTML=SHOW[mode].map(function(k){
+  var lab=F[k][0];if(k==='rate')lab=S.rt+' rate';if(k==='lwd'&&mode===3)lab='Last working day (resigned/retired/left only)';
+  var c=k==='type'?'<select data-k="type"><option>Resigned/Retired/Left</option><option>Less than 1 year</option></select>':F[k][1]==='st'?'<select data-k="'+k+'"><option value="">Choose…</option><option>Complete</option><option>Not complete</option></select>':'<input data-k="'+k+'" type="'+F[k][1]+'"'+(F[k][1]==='number'?' step="any" min="0"':'')+'>';
+  return '<div class="f" id="f_'+k+'"><label>'+lab+'</label>'+c+'<div class="m" id="m_'+k+'"></div></div>'}).join('');
+ document.querySelectorAll('[data-k]').forEach(function(e){e.value=v[e.dataset.k];
+  e.oninput=e.onchange=function(){v[e.dataset.k]=e.value;calc()}});
+ calc()}
+function calc(){
+ var E={},o={},warn='',LYS=pd(S.lys),LYE=new Date(LYS.getFullYear()+1,LYS.getMonth(),LYS.getDate()-1),CUT=pd(S.cut);
+ var hire=pd(v.hire),lwd=pd(v.lwd),hpd=S.hpd||8;
+ var path=mode===1?'R':mode===2?'F':(v.type==='Resigned/Retired/Left'?'R':'F');
+ if(!v.name.trim())E.name='Enter the employee name';
+ if(mode!==3&&!hire)E.hire='Enter the hire date';
+ if(mode===3){}else if(path==='R'){
+  if(!lwd)E.lwd='Enter the last working day';
+  else if(hire&&lwd<hire)E.lwd='Last day is before the hire date';
+  else if(lwd<LYS||lwd>LYE)E.lwd='Last day is outside the leave year';
+  else if(hire&&yrs(hire,lwd)<1)E.lwd=mode===3?'Less than 1 year of service. Set Employee type to Less than 1 year':'Less than 1 year of service. Use the AFTER 1 YEAR option';
+ }else if(hire){
+  if(hire>CUT)E.hire='Hired after the cut-off date';
+  else if(yrs(hire,CUT)>=1)E.hire=mode===3?'1 year or more at cut-off. Set Employee type to Resigned/Retired/Left':'1 year or more at cut-off. Use the CLEARANCE option';
+ }
+ if(mode!==3&&hire&&!E.hire&&!(path==='R'&&E.lwd)){
+  if(path==='R'){o.years=yrs(hire,lwd);o.months=(lwd.getFullYear()-LYS.getFullYear())*12+lwd.getMonth()-LYS.getMonth()+(lwd.getDate()<=15?0.5:1);
+   o.days=o.years>=4?15:o.years===3?14:o.years===2?12:10}
+  else{o.months=(CUT.getFullYear()-hire.getFullYear())*12+CUT.getMonth()-hire.getMonth()+(hire.getDate()<=15?1:0.5);o.days=10}
+  o.hrs=o.months/12*o.days*hpd}
+ if(mode===3){
+  var rate=parseFloat(v.rate),sl=parseFloat(v.sl),vl=parseFloat(v.vl);
+  if(!(rate>0))E.rate='Enter the rate';
+  var chk=function(st,x,key,sk,nm){
+   if(!st)E[sk]='Choose the '+nm+' status';
+   if(String(v[key])===''||isNaN(x))E[key]='Enter '+nm+' unused hours (0 if none)';
+   else if(x<0)E[key]='Hours cannot be negative'};
+  chk(v.slst,sl,'sl','slst','SL');chk(v.vst,vl,'vl','vst','VL');
+  if(!E.rate)o.hourly=S.rt==='Daily'?rate/hpd:rate*12/S.wd/hpd;
+  if(!E.rate&&!E.sl&&!E.vl&&!E.slst&&!E.vst){
+   o.sla=r2(sl*o.hourly);o.vla=r2(vl*o.hourly);var p=S.p1/100;
+   var a=v.slst==='Complete',b=v.vst==='Complete';
+   o.cs=a&&b?'COMPLETE LEAVE':a?'SL IS COMPLETE':b?'VL IS COMPLETE':'INCOMPLETE LEAVE';
+   o.sa=a?r2(o.sla*p):0;o.va=b?r2(o.vla*p):0;o.ex=a&&b?r2((o.sla+o.sa+o.vla+o.va)*S.p2/100):0;
+   o.tot=o.sla+o.vla+o.sa+o.va+o.ex}}
+ document.querySelectorAll('[data-k]').forEach(function(e){var k=e.dataset.k;
+  $('f_'+k).classList.toggle('bad',!!E[k]);$('m_'+k).textContent=E[k]||''});
+ var ks=Object.keys(E),B=$('banner');
+ if(ks.length){B.className='err';B.textContent='Fix '+ks.length+' item'+(ks.length>1?'s':'')+': '+E[ks[0]]+(ks.length>1?' (and '+(ks.length-1)+' more)':'')}
+ else if(warn){B.className='warn';B.textContent='Check: '+warn}
+ else{B.className='ok';B.textContent='OK'+(o.cs?' - '+o.cs:'')}
+ var D='—',h=function(x,f){return x===undefined?D:f(x)},L;
+ if(mode===1)L=[['Completed years of service',h(o.years,String)],['No. of months (Apr to last working day)',h(o.months,n)],['Leave credit days (SL and VL each)',h(o.days,String)],['SL total (hours)',h(o.hrs,n)],['VL total (hours)',h(o.hrs,n)]];
+ if(mode===2)L=[['No. of months (hire date to cut-off)',h(o.months,n)],['Leave credit days (SL and VL each)',h(o.days,String)],['SL total (hours)',h(o.hrs,n)],['VL total (hours)',h(o.hrs,n)]];
+ if(mode===3)L=[['Hourly rate',h(o.hourly,php)],['SL amount',h(o.sla,php)],['VL amount',h(o.vla,php)],['Leave case',o.cs||D],['SL add-on (+'+S.p1+'%)',h(o.sa,php)],['VL add-on (+'+S.p1+'%)',h(o.va,php)],['Additional (+'+S.p2+'% when both complete)',h(o.ex,php)]];
+ $('res').innerHTML=L.map(function(r){return '<div class="r"><span>'+r[0]+'</span><span>'+r[1]+'</span></div>'}).join('');
+ $('tot').style.display=mode===3?'block':'none';
+ $('tot').innerHTML='<small>ESTIMATED AMOUNT</small><b>'+h(o.tot,php)+'</b>'}
+$('mode').onchange=function(e){mode=+e.target.value;buildInputs()};
+buildSettings();buildInputs();
+</script></body></html>
